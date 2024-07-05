@@ -1,0 +1,8 @@
+- name: Configurar IIS em servidor Windows
+  hosts: windows
+  tasks:
+    - name: Instalar IIS
+      win_feature:
+        name: Web-Server
+        state: present
+        include_management_tools: true
