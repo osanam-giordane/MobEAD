@@ -1,0 +1,51 @@
+pipeline {
+    agent any
+
+    environment {
+        SONARQUBE_URL = 'http://localhost:9000'
+    }
+
+    stages {
+        stage('Clone do Código') {
+            steps {
+                git 'https://github.com/IranRibeiro55/MobEAD.git'
+            }
+        }
+
+        stage('Instalar Dependências') {
+            steps {
+                bat 'pip install -r requirements.txt'
+            }
+        }
+
+        stage('Análise de Código - SonarQube') {
+            steps {
+                bat 'sonar-scanner -Dsonar.projectKey=MobEAD -Dsonar.host.url=%SONARQUBE_URL%'
+            }
+        }
+
+        stage('Testes Automatizados') {
+            steps {
+                bat 'pytest tests/'
+            }
+        }
+
+        stage('Deploy para Desenvolvimento') {
+            steps {
+                bat 'docker-compose up -d --build'
+            }
+        }
+
+        stage('Aprovação para Produção') {
+            steps {
+                input message: 'Aprovar deploy para produção?', ok: 'Sim'
+            }
+        }
+
+        stage('Deploy para Produção') {
+            steps {
+                bat 'xcopy /E /I . C:\\servidor_producao\\MobEAD'
+            }
+        }
+    }
+}

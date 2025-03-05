@@ -1,32 +1,51 @@
-pipeline {  
+pipeline {
+    agent any
+
     environment {
-      registry = "osanamgcj/mobead_image_build"
-      registryCredential = 'dockerhub'
-      dockerImage = ''
+        SONARQUBE_URL = 'http://localhost:9000'
     }
-    agent any 
-    stages { 
-        stage('Lint Dockerfile'){ 
-            steps{
-                echo "Pipeline Usando Jenkinsfile"
-                sh 'docker run --rm -i hadolint/hadolint < Dockerfile'
+
+    stages {
+        stage('Clone do Código') {
+            steps {
+                git 'https://github.com/SEU_USUARIO/MobEAD.git'
             }
         }
-        stage('Build image') {
-            steps{
-                script {
-                    dockerImage = docker.build registry + ":$BUILD_NUMBER"
-                }
+
+        stage('Instalar Dependências') {
+            steps {
+                bat 'pip install -r requirements.txt'
             }
         }
-        stage('Delivery image') {
-            steps{
-                script {
-                  docker.withRegistry('https://registry-1.docker.io/v2/', 'dockerhub') {
-                   dockerImage.push("$BUILD_NUMBER")
-                  }
-                }
+
+        stage('Análise de Código - SonarQube') {
+            steps {
+                bat 'sonar-scanner -Dsonar.projectKey=MobEAD -Dsonar.host.url=%SONARQUBE_URL%'
             }
         }
-    } 
+
+        stage('Testes Automatizados') {
+            steps {
+                bat 'pytest tests/'
+            }
+        }
+
+        stage('Deploy para Desenvolvimento') {
+            steps {
+                bat 'docker-compose up -d --build'
+            }
+        }
+
+        stage('Aprovação para Produção') {
+            steps {
+                input message: 'Aprovar deploy para produção?', ok: 'Sim'
+            }
+        }
+
+        stage('Deploy para Produção') {
+            steps {
+                bat 'xcopy /E /I . C:\\servidor_producao\\MobEAD'
+            }
+        }
+    }
 }
